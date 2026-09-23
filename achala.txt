@@ -1,1 +1,38 @@
-kdkdk
+import json
+import boto3
+import os
+
+# Initialize the Glue client
+glue_client = boto3.client('glue')
+
+# Retrieve your Glue Job name from Lambda Environment Variables (recommended)
+GLUE_JOB_NAME = os.environ.get('GLUE_JOB_NAME', 'your-glue-job-name')
+
+def lambda_handler(event, context):
+    try:
+        # Extract bucket name and file key from the incoming S3 event
+        for record in event['Records']:
+            bucket_name = record['s3']['bucket']['name']
+            file_key = record['s3']['object']['key']
+            
+            print(f"New file uploaded - Bucket: {bucket_name}, Key: {file_key}")
+            
+            # Optional: Pass S3 file parameters dynamically to the Glue Job arguments
+            response = glue_client.start_job_run(
+                JobName=GLUE_JOB_NAME,
+                Arguments={
+                    '--S3_BUCKET': bucket_name,
+                    '--S3_KEY': file_key
+                }
+            )
+            
+            print(f"Successfully started Glue Job Run ID: {response['JobRunId']}")
+            
+        return {
+            'statusCode': 200,
+            'body': json.dumps('Glue job triggered successfully!')
+        }
+        
+    except Exception as e:
+        print(f"Error triggering Glue job: {str(e)}")
+        raise e
